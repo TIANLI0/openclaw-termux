@@ -14,7 +14,15 @@ class TerminalService {
   /// Get paths and host-side proot environment variables.
   /// Host env should ONLY contain proot-specific vars — guest env is
   /// set via `env -i` inside the command, matching proot-distro.
+  ///
+  /// Also ensures directories and resolv.conf exist — Android may clear
+  /// them during an app update (#40). Every screen that uses proot calls
+  /// this method, so it's the single place to guarantee the files exist.
   static Future<Map<String, String>> getProotShellConfig() async {
+    // Ensure dirs + resolv.conf exist before any proot operation (#40).
+    try { await NativeBridge.setupDirs(); } catch (_) {}
+    try { await NativeBridge.writeResolv(); } catch (_) {}
+
     final filesDir = await _channel.invokeMethod<String>('getFilesDir') ?? '';
     final nativeLibDir = await _channel.invokeMethod<String>('getNativeLibDir') ?? '';
 

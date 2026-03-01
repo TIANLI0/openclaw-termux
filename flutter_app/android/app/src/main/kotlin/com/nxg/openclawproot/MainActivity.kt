@@ -162,6 +162,50 @@ class MainActivity : FlutterActivity() {
                     NodeForegroundService.updateStatus(text)
                     result.success(true)
                 }
+                "startSshd" -> {
+                    val port = call.argument<Int>("port") ?: 8022
+                    try {
+                        SshForegroundService.start(applicationContext, port)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("SERVICE_ERROR", e.message, null)
+                    }
+                }
+                "stopSshd" -> {
+                    try {
+                        SshForegroundService.stop(applicationContext)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("SERVICE_ERROR", e.message, null)
+                    }
+                }
+                "isSshdRunning" -> {
+                    result.success(SshForegroundService.isRunning)
+                }
+                "getSshdPort" -> {
+                    result.success(SshForegroundService.currentPort)
+                }
+                "getDeviceIps" -> {
+                    result.success(SshForegroundService.getDeviceIps())
+                }
+                "setRootPassword" -> {
+                    val password = call.argument<String>("password")
+                    if (password != null) {
+                        Thread {
+                            try {
+                                val escaped = password.replace("'", "'\\''")
+                                processManager.runInProotSync(
+                                    "echo 'root:$escaped' | chpasswd", 15
+                                )
+                                runOnUiThread { result.success(true) }
+                            } catch (e: Exception) {
+                                runOnUiThread { result.error("SSH_ERROR", e.message, null) }
+                            }
+                        }.start()
+                    } else {
+                        result.error("INVALID_ARGS", "password required", null)
+                    }
+                }
                 "requestBatteryOptimization" -> {
                     try {
                         val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {

@@ -46,6 +46,11 @@ class _SplashScreenState extends State<SplashScreen>
     try {
       setState(() => _status = 'Checking setup status...');
 
+      // Ensure directories and resolv.conf exist on every app open.
+      // Android may clear the files directory during update or reinstall (#40).
+      try { await NativeBridge.setupDirs(); } catch (_) {}
+      try { await NativeBridge.writeResolv(); } catch (_) {}
+
       final prefs = PreferencesService();
       await prefs.init();
 

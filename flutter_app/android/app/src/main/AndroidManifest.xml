@@ -67,6 +67,11 @@
             android:foregroundServiceType="specialUse" />
 
         <service
+            android:name=".SshForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" />
+
+        <service
             android:name=".ScreenCaptureService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />

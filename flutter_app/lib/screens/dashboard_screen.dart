@@ -6,12 +6,15 @@ import '../providers/node_provider.dart';
 import '../widgets/gateway_controls.dart';
 import '../widgets/status_card.dart';
 import 'node_screen.dart';
+import 'configure_screen.dart';
 import 'onboarding_screen.dart';
 import 'terminal_screen.dart';
 import 'web_dashboard_screen.dart';
 import 'logs_screen.dart';
 import 'packages_screen.dart';
+import 'providers_screen.dart';
 import 'settings_screen.dart';
+import 'ssh_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -90,12 +93,39 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
             StatusCard(
+              title: 'Configure',
+              subtitle: 'Manage gateway settings',
+              icon: Icons.tune,
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ConfigureScreen()),
+              ),
+            ),
+            StatusCard(
+              title: 'AI Providers',
+              subtitle: 'Configure models and API keys',
+              icon: Icons.model_training,
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ProvidersScreen()),
+              ),
+            ),
+            StatusCard(
               title: 'Packages',
-              subtitle: 'Install optional tools (Go, Homebrew)',
+              subtitle: 'Install optional tools (Go, Homebrew, SSH)',
               icon: Icons.extension,
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const PackagesScreen()),
+              ),
+            ),
+            StatusCard(
+              title: 'SSH Access',
+              subtitle: 'Remote terminal access via SSH',
+              icon: Icons.terminal,
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SshScreen()),
               ),
             ),
             StatusCard(

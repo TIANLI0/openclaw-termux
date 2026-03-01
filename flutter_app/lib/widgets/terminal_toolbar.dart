@@ -6,42 +6,90 @@ import '../app.dart';
 
 /// Termux-style extra keys toolbar for terminal screens.
 /// Provides ESC, CTRL, ALT, TAB, arrows, and common special characters.
+///
+/// CTRL and ALT state is exposed via [ValueNotifier]s so the parent
+/// screen can intercept keyboard input and apply modifiers.
 class TerminalToolbar extends StatefulWidget {
   final Pty? pty;
+  final ValueNotifier<bool> ctrlNotifier;
+  final ValueNotifier<bool> altNotifier;
 
-  const TerminalToolbar({super.key, required this.pty});
+  const TerminalToolbar({
+    super.key,
+    required this.pty,
+    required this.ctrlNotifier,
+    required this.altNotifier,
+  });
 
   @override
   State<TerminalToolbar> createState() => _TerminalToolbarState();
 }
 
 class _TerminalToolbarState extends State<TerminalToolbar> {
-  bool _ctrlActive = false;
-  bool _altActive = false;
+  bool get _ctrlActive => widget.ctrlNotifier.value;
+  bool get _altActive => widget.altNotifier.value;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.ctrlNotifier.addListener(_onModifierChanged);
+    widget.altNotifier.addListener(_onModifierChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.ctrlNotifier.removeListener(_onModifierChanged);
+    widget.altNotifier.removeListener(_onModifierChanged);
+    super.dispose();
+  }
+
+  void _onModifierChanged() {
+    setState(() {});
+  }
 
   void _send(String data) {
     final pty = widget.pty;
     if (pty == null) return;
 
     if (_ctrlActive) {
-      // CTRL+key: send byte 1-26 for a-z
-      _ctrlActive = false;
+      widget.ctrlNotifier.value = false;
+
+      // Ctrl+a-z → bytes 1-26
       if (data.length == 1) {
         final code = data.toLowerCase().codeUnitAt(0);
         if (code >= 97 && code <= 122) {
-          // a-z -> 1-26
           pty.write(Uint8List.fromList([code - 96]));
-          setState(() {});
           return;
         }
       }
+
+      // Ctrl+escape sequences (arrows, Home, End, PgUp, PgDn)
+      const ctrlSeqMap = <String, String>{
+        '\x1b[A': '\x1b[1;5A', // Up
+        '\x1b[B': '\x1b[1;5B', // Down
+        '\x1b[D': '\x1b[1;5D', // Left
+        '\x1b[C': '\x1b[1;5C', // Right
+        '\x1b[H': '\x1b[1;5H', // Home
+        '\x1b[F': '\x1b[1;5F', // End
+        '\x1b[5~': '\x1b[5;5~', // PgUp
+        '\x1b[6~': '\x1b[6;5~', // PgDn
+      };
+
+      final ctrlVariant = ctrlSeqMap[data];
+      if (ctrlVariant != null) {
+        pty.write(utf8.encode(ctrlVariant));
+        return;
+      }
+
+      // Unhandled combo: send raw data (TAB, ESC, symbols, etc.)
+      pty.write(utf8.encode(data));
+      return;
     }
 
     if (_altActive) {
       // ALT+key: send ESC + key
-      _altActive = false;
+      widget.altNotifier.value = false;
       pty.write(utf8.encode('\x1b$data'));
-      setState(() {});
       return;
     }
 
@@ -49,17 +97,13 @@ class _TerminalToolbarState extends State<TerminalToolbar> {
   }
 
   void _toggleCtrl() {
-    setState(() {
-      _ctrlActive = !_ctrlActive;
-      if (_ctrlActive) _altActive = false;
-    });
+    widget.ctrlNotifier.value = !_ctrlActive;
+    if (_ctrlActive) widget.altNotifier.value = false;
   }
 
   void _toggleAlt() {
-    setState(() {
-      _altActive = !_altActive;
-      if (_altActive) _ctrlActive = false;
-    });
+    widget.altNotifier.value = !_altActive;
+    if (_altActive) widget.ctrlNotifier.value = false;
   }
 
   @override

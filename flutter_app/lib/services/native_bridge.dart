@@ -157,4 +157,30 @@ class NativeBridge {
   static Future<bool> writeRootfsFile(String path, String content) async {
     return await _channel.invokeMethod('writeRootfsFile', {'path': path, 'content': content});
   }
+
+  // SSH Service
+  static Future<bool> startSshd({int port = 8022}) async {
+    return await _channel.invokeMethod('startSshd', {'port': port});
+  }
+
+  static Future<bool> stopSshd() async {
+    return await _channel.invokeMethod('stopSshd');
+  }
+
+  static Future<bool> isSshdRunning() async {
+    return await _channel.invokeMethod('isSshdRunning');
+  }
+
+  static Future<int> getSshdPort() async {
+    return await _channel.invokeMethod('getSshdPort');
+  }
+
+  static Future<List<String>> getDeviceIps() async {
+    final result = await _channel.invokeMethod('getDeviceIps');
+    return List<String>.from(result);
+  }
+
+  static Future<bool> setRootPassword(String password) async {
+    return await _channel.invokeMethod('setRootPassword', {'password': password});
+  }
 }
