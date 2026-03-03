@@ -81,6 +81,10 @@ class SshForegroundService : Service() {
         val port = intent?.getIntExtra(EXTRA_PORT, 8022) ?: 8022
         currentPort = port
         startForeground(NOTIFICATION_ID, buildNotification("Starting SSH on port $port..."))
+        if (isRunning) {
+            updateNotification("SSH running on port $port")
+            return START_STICKY
+        }
         acquireWakeLock()
         startSshd(port)
         return START_STICKY
@@ -95,6 +99,7 @@ class SshForegroundService : Service() {
     }
 
     private fun startSshd(port: Int) {
+        if (sshdProcess?.isAlive == true) return
         isRunning = true
         instance = this
 
@@ -171,6 +176,7 @@ class SshForegroundService : Service() {
     }
 
     private fun acquireWakeLock() {
+        releaseWakeLock()
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,

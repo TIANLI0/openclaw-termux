@@ -42,8 +42,11 @@ class TerminalSessionService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        isRunning = true
         startForeground(NOTIFICATION_ID, buildNotification())
+        if (isRunning) {
+            return START_STICKY
+        }
+        isRunning = true
         acquireWakeLock()
         return START_STICKY
     }
@@ -55,6 +58,7 @@ class TerminalSessionService : Service() {
     }
 
     private fun acquireWakeLock() {
+        releaseWakeLock()
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,

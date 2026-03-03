@@ -57,6 +57,8 @@ class _TerminalScreenState extends State<TerminalScreen> {
   }
 
   Future<void> _startPty() async {
+    _pty?.kill();
+    _pty = null;
     try {
       // Ensure dirs + resolv.conf exist before proot starts (#40).
       try { await NativeBridge.setupDirs(); } catch (_) {}

@@ -39,6 +39,7 @@ class MainActivity : FlutterActivity() {
     private lateinit var processManager: ProcessManager
     private var screenCaptureResult: MethodChannel.Result? = null
     private var screenCaptureDurationMs: Long = 5000L
+    private var setupDone = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -51,10 +52,13 @@ class MainActivity : FlutterActivity() {
 
         // Ensure directories and resolv.conf exist on every app start.
         // Android may clear filesDir during APK update (#40).
-        Thread {
-            try { bootstrapManager.setupDirectories() } catch (_: Exception) {}
-            try { bootstrapManager.writeResolvConf() } catch (_: Exception) {}
-        }.start()
+        if (!setupDone) {
+            setupDone = true
+            Thread {
+                try { bootstrapManager.setupDirectories() } catch (_: Exception) {}
+                try { bootstrapManager.writeResolvConf() } catch (_: Exception) {}
+            }.start()
+        }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {

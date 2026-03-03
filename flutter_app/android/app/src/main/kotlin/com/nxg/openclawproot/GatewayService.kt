@@ -55,6 +55,10 @@ class GatewayService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIFICATION_ID, buildNotification("Starting..."))
+        if (isRunning) {
+            updateNotificationRunning()
+            return START_STICKY
+        }
         acquireWakeLock()
         startGateway()
         return START_STICKY
@@ -71,6 +75,7 @@ class GatewayService : Service() {
     }
 
     private fun startGateway() {
+        if (gatewayProcess?.isAlive == true) return
         isRunning = true
         instance = this
         startTime = System.currentTimeMillis()
@@ -219,6 +224,7 @@ class GatewayService : Service() {
     }
 
     private fun acquireWakeLock() {
+        releaseWakeLock()
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,

@@ -14,7 +14,7 @@ import android.os.PowerManager
 class SetupService : Service() {
     companion object {
         const val CHANNEL_ID = "openclaw_setup"
-        const val NOTIFICATION_ID = 3
+        const val NOTIFICATION_ID = 4
         var isRunning = false
             private set
         private var instance: SetupService? = null
@@ -48,9 +48,12 @@ class SetupService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        startForeground(NOTIFICATION_ID, buildNotification("Setting up environment...", -1))
+        if (isRunning) {
+            return START_STICKY
+        }
         isRunning = true
         instance = this
-        startForeground(NOTIFICATION_ID, buildNotification("Setting up environment...", -1))
         acquireWakeLock()
         return START_STICKY
     }
@@ -63,6 +66,7 @@ class SetupService : Service() {
     }
 
     private fun acquireWakeLock() {
+        releaseWakeLock()
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
