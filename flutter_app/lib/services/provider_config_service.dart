@@ -70,6 +70,7 @@ class ProviderConfigService {
       'apiKey': apiKey,
       'baseUrl': resolvedBaseUrl,
       'model': model,
+      'models': [model],
     });
     final modelJson = jsonEncode(model);
     final providerIdJson = jsonEncode(provider.id);
@@ -131,6 +132,7 @@ fs.writeFileSync(p, JSON.stringify(c, null, 2));
       'apiKey': apiKey,
       'baseUrl': baseUrl,
       'model': model,
+      'models': [model],
     };
 
     // Set active model

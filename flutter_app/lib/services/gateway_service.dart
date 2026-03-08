@@ -9,9 +9,12 @@ import 'preferences_service.dart';
 
 class GatewayService {
   Timer? _healthTimer;
+  Timer? _initialDelayTimer;
   StreamSubscription? _logSubscription;
   final _stateController = StreamController<GatewayState>.broadcast();
   GatewayState _state = const GatewayState();
+  DateTime? _startingAt;
+  bool _startInProgress = false;
   static final _tokenUrlRegex = RegExp(r'https?://(?:localhost|127\.0\.0\.1):18789/#token=[0-9a-f]+');
   static final _boxDrawing = RegExp(r'[│┤├┬┴┼╮╯╰╭─╌╴╶┌┐└┘◇◆]+');
 
@@ -23,6 +26,8 @@ class GatewayService {
         .replaceAll(_boxDrawing, '')
         .replaceAll(RegExp(r'\s+'), '');
   }
+
+  static String _ts(String msg) => '${DateTime.now().toUtc().toIso8601String()} $msg';
 
   Stream<GatewayState> get stateStream => _stateController.stream;
   GatewayState get state => _state;
@@ -66,17 +71,18 @@ class GatewayService {
       // Write allowCommands config so the next gateway restart picks it up,
       // and in case the running gateway supports config hot-reload.
       await _writeNodeAllowConfig();
+      _startingAt = DateTime.now();
       _updateState(_state.copyWith(
         status: GatewayStatus.starting,
         dashboardUrl: savedUrl,
-        logs: [..._state.logs, '[INFO] Gateway process detected, reconnecting...'],
+        logs: [..._state.logs, _ts('[INFO] Gateway process detected, reconnecting...')],
       ));
 
       _subscribeLogs();
       _startHealthCheck();
     } else if (prefs.autoStartGateway) {
       _updateState(_state.copyWith(
-        logs: [..._state.logs, '[INFO] Auto-starting gateway...'],
+        logs: [..._state.logs, _ts('[INFO] Auto-starting gateway...')],
       ));
       await start();
     }
@@ -96,6 +102,7 @@ class GatewayService {
         dashboardUrl = urlMatch.group(0);
         final prefs = PreferencesService();
         prefs.init().then((_) => prefs.dashboardUrl = dashboardUrl);
+        NativeBridge.showUrlNotification(dashboardUrl!, title: 'Dashboard Ready');
       }
       _updateState(_state.copyWith(logs: logs, dashboardUrl: dashboardUrl));
     });
@@ -113,6 +120,7 @@ class GatewayService {
       'screen.record',
       'sensor.read', 'sensor.list',
       'haptic.vibrate',
+      'serial.list', 'serial.connect', 'serial.disconnect', 'serial.write', 'serial.read',
     ];
     // Use a Node.js one-liner to safely merge into existing openclaw.json
     // without clobbering other settings (API keys, onboarding config, etc.)
@@ -128,13 +136,40 @@ c.gateway.nodes.denyCommands = [];
 c.gateway.nodes.allowCommands = $allowJson;
 fs.writeFileSync(p, JSON.stringify(c, null, 2));
 ''';
+    var prootOk = false;
     try {
       await NativeBridge.runInProot(
         'node -e ${_shellEscape(script)}',
         timeout: 15,
       );
-    } catch (_) {
-      // Non-fatal: gateway may still work with default policy
+      prootOk = true;
+    } catch (_) {}
+
+    // Direct file I/O fallback (#56): if proot/node isn't ready, write the
+    // config directly on the Android filesystem so the gateway still picks
+    // up allowCommands on next start.
+    if (!prootOk) {
+      try {
+        final filesDir = await NativeBridge.getFilesDir();
+        final configFile = File('$filesDir/rootfs/ubuntu/root/.openclaw/openclaw.json');
+        Map<String, dynamic> config = {};
+        if (configFile.existsSync()) {
+          try {
+            config = Map<String, dynamic>.from(
+                jsonDecode(configFile.readAsStringSync()) as Map);
+          } catch (_) {}
+        }
+        config.putIfAbsent('gateway', () => <String, dynamic>{});
+        final gw = config['gateway'] as Map<String, dynamic>;
+        gw.putIfAbsent('nodes', () => <String, dynamic>{});
+        final nodes = gw['nodes'] as Map<String, dynamic>;
+        nodes['denyCommands'] = <String>[];
+        nodes['allowCommands'] = allowCommands;
+        configFile.parent.createSync(recursive: true);
+        configFile.writeAsStringSync(
+          const JsonEncoder.withIndent('  ').convert(config),
+        );
+      } catch (_) {}
     }
   }
 
@@ -144,6 +179,10 @@ fs.writeFileSync(p, JSON.stringify(c, null, 2));
   }
 
   Future<void> start() async {
+    // Prevent concurrent start() calls from racing
+    if (_startInProgress) return;
+    _startInProgress = true;
+
     final prefs = PreferencesService();
     await prefs.init();
     final savedUrl = prefs.dashboardUrl;
@@ -151,7 +190,7 @@ fs.writeFileSync(p, JSON.stringify(c, null, 2));
     _updateState(_state.copyWith(
       status: GatewayStatus.starting,
       clearError: true,
-      logs: [..._state.logs, '[INFO] Starting gateway...'],
+      logs: [..._state.logs, _ts('[INFO] Starting gateway...')],
       dashboardUrl: savedUrl,
     ));
 
@@ -177,6 +216,7 @@ fs.writeFileSync(p, JSON.stringify(c, null, 2));
         }
       } catch (_) {}
       await _writeNodeAllowConfig();
+      _startingAt = DateTime.now();
       await NativeBridge.startGateway();
       _subscribeLogs();
       _startHealthCheck();
@@ -184,20 +224,23 @@ fs.writeFileSync(p, JSON.stringify(c, null, 2));
       _updateState(_state.copyWith(
         status: GatewayStatus.error,
         errorMessage: 'Failed to start: $e',
-        logs: [..._state.logs, '[ERROR] Failed to start: $e'],
+        logs: [..._state.logs, _ts('[ERROR] Failed to start: $e')],
       ));
+    } finally {
+      _startInProgress = false;
     }
   }
 
   Future<void> stop() async {
-    _healthTimer?.cancel();
+    _cancelAllTimers();
     _logSubscription?.cancel();
+    _startingAt = null;
 
     try {
       await NativeBridge.stopGateway();
       _updateState(GatewayState(
         status: GatewayStatus.stopped,
-        logs: [..._state.logs, '[INFO] Gateway stopped'],
+        logs: [..._state.logs, _ts('[INFO] Gateway stopped')],
       ));
     } catch (e) {
       _updateState(_state.copyWith(
@@ -207,12 +250,27 @@ fs.writeFileSync(p, JSON.stringify(c, null, 2));
     }
   }
 
-  void _startHealthCheck() {
+  /// Cancel both the initial delay timer and periodic health timer.
+  void _cancelAllTimers() {
+    _initialDelayTimer?.cancel();
+    _initialDelayTimer = null;
     _healthTimer?.cancel();
-    _healthTimer = Timer.periodic(
-      const Duration(milliseconds: AppConstants.healthCheckIntervalMs),
-      (_) => _checkHealth(),
-    );
+    _healthTimer = null;
+  }
+
+  void _startHealthCheck() {
+    _cancelAllTimers();
+    // Delay the first health check by 30s — Node.js inside proot needs time to start.
+    // Use a Timer (not Future.delayed) so it can be cancelled on stop().
+    _initialDelayTimer = Timer(const Duration(seconds: 30), () {
+      _initialDelayTimer = null;
+      if (_state.status == GatewayStatus.stopped) return;
+      _checkHealth();
+      _healthTimer = Timer.periodic(
+        const Duration(milliseconds: AppConstants.healthCheckIntervalMs),
+        (_) => _checkHealth(),
+      );
+    });
   }
 
   Future<void> _checkHealth() async {
@@ -225,18 +283,28 @@ fs.writeFileSync(p, JSON.stringify(c, null, 2));
         _updateState(_state.copyWith(
           status: GatewayStatus.running,
           startedAt: DateTime.now(),
-          logs: [..._state.logs, '[INFO] Gateway is healthy'],
+          logs: [..._state.logs, _ts('[INFO] Gateway is healthy')],
         ));
       }
     } catch (_) {
       // Still starting or temporarily unreachable
       final isRunning = await NativeBridge.isGatewayRunning();
       if (!isRunning && _state.status != GatewayStatus.stopped) {
+        // Grace period: if we're still within 120s of startup, don't declare dead.
+        // proot + Node.js can take a long time on first boot.
+        if (_startingAt != null &&
+            _state.status == GatewayStatus.starting &&
+            DateTime.now().difference(_startingAt!).inSeconds < 120) {
+          _updateState(_state.copyWith(
+            logs: [..._state.logs, _ts('[INFO] Starting, waiting for gateway...')],
+          ));
+          return;
+        }
         _updateState(_state.copyWith(
           status: GatewayStatus.stopped,
-          logs: [..._state.logs, '[WARN] Gateway process not running'],
+          logs: [..._state.logs, _ts('[WARN] Gateway process not running')],
         ));
-        _healthTimer?.cancel();
+        _cancelAllTimers();
       }
     }
   }
@@ -253,7 +321,7 @@ fs.writeFileSync(p, JSON.stringify(c, null, 2));
   }
 
   void dispose() {
-    _healthTimer?.cancel();
+    _cancelAllTimers();
     _logSubscription?.cancel();
     _stateController.close();
   }

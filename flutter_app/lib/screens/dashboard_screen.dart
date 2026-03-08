@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../constants.dart';
 import '../l10n/app_localizations.dart';
@@ -67,18 +68,42 @@ class DashboardScreen extends StatelessWidget {
             ),
             Consumer<GatewayProvider>(
               builder: (context, provider, _) {
+                final url = provider.state.dashboardUrl;
+                final token = url != null
+                    ? RegExp(r'#token=([0-9a-f]+)').firstMatch(url)?.group(1)
+                    : null;
+                final subtitle = provider.state.isRunning
+                    ? (token != null
+                        ? 'Token: ${token.substring(0, (token.length > 8 ? 8 : token.length))}...'
+                        : 'Open OpenClaw dashboard in browser')
+                    : 'Start gateway first';
                 return StatusCard(
                   title: l10n.t('dashboardWebDashboardTitle'),
-                  subtitle: provider.state.isRunning
-                      ? l10n.t('dashboardWebDashboardSubtitle')
-                      : l10n.t('dashboardStartGatewayFirst'),
+                  subtitle: subtitle,
                   icon: Icons.dashboard,
-                  trailing: const Icon(Icons.chevron_right),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (token != null)
+                        IconButton(
+                          icon: const Icon(Icons.copy, size: 18),
+                          tooltip: 'Copy dashboard URL',
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: url!));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Dashboard URL copied')),
+                            );
+                          },
+                        ),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
                   onTap: provider.state.isRunning
                       ? () => Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => WebDashboardScreen(
-                                url: provider.state.dashboardUrl,
+                                url: url,
                               ),
                             ),
                           )

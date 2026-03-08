@@ -184,7 +184,7 @@ class BootstrapService {
       );
       await NativeBridge.runInProot(
         'apt-get install -y --no-install-recommends '
-        'ca-certificates git python3 make g++',
+        'ca-certificates git python3 make g++ curl wget',
       );
 
       // Git config (.gitconfig) is written by installBionicBypass() on the

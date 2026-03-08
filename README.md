@@ -108,6 +108,16 @@ The gateway's `openclaw.json` is automatically patched before startup to clear `
 
 ---
 
+## Important Warnings
+
+> **Storage Permission** — This app does **NOT** need full storage access to function. If prompted, **deny** the storage permission unless you specifically need proot to access `/sdcard`. Granting `MANAGE_EXTERNAL_STORAGE` allows the proot environment to read and modify **all files** on your device including photos, downloads, and documents. Previous versions requested this permission automatically on launch, which could lead to unintended data loss (see [#67](https://github.com/mithun50/openclaw-termux/issues/67), [#63](https://github.com/mithun50/openclaw-termux/issues/63)). This has been fixed — storage access is now opt-in from Settings only.
+
+> **Battery Optimization** — Disable battery optimization for the app in Android Settings to prevent Android from killing the gateway process in the background. Without this, the gateway may crash silently after a few minutes.
+
+> **First Launch** — The initial setup downloads ~500MB (Ubuntu rootfs + Node.js). Ensure you have a stable internet connection and sufficient storage before starting.
+
+---
+
 ## Quick Start
 
 ### Flutter App (Recommended)
@@ -313,6 +323,12 @@ The Flutter app automatically loads the dashboard with your auth token via the b
 ---
 
 ## Troubleshooting
+
+### Files deleted or missing after using the app
+
+Versions before v1.8.4 automatically requested full storage access (`MANAGE_EXTERNAL_STORAGE`) on launch. Combined with symlinks inside the proot rootfs pointing to `/sdcard`, cleanup operations could follow those symlinks and delete real user files. **This has been fixed** — storage permission is no longer auto-requested, symlinks are not followed during deletion, and a path boundary check prevents any deletion outside the app's private directory. If you were affected, see [#67](https://github.com/mithun50/openclaw-termux/issues/67).
+
+To revoke storage permission: Android Settings > Apps > OpenClaw > Permissions > Files and media > Don't allow.
 
 ### Gateway won't start
 

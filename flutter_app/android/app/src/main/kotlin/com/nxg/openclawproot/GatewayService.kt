@@ -8,12 +8,16 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import io.flutter.plugin.common.EventChannel
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
+import java.net.InetSocketAddress
+import java.net.Socket
 
 class GatewayService : Service() {
     companion object {
@@ -23,6 +27,25 @@ class GatewayService : Service() {
             private set
         var logSink: EventChannel.EventSink? = null
         private var instance: GatewayService? = null
+        private val mainHandler = Handler(Looper.getMainLooper())
+
+        /** Check if the gateway process is actually alive (not just the flag).
+         *  Safe to call from the main thread — no blocking I/O. */
+        fun isProcessAlive(): Boolean {
+            val inst = instance ?: return false
+            if (!isRunning) return false
+            val proc = inst.gatewayProcess
+            // If we have a process reference, check if it's actually alive
+            if (proc != null) return proc.isAlive
+            // No process ref yet — still in setup phase.
+            // If the gateway thread is alive, setup is ongoing — report true.
+            // This covers slow devices where dir setup takes a long time.
+            val thread = inst.gatewayThread
+            if (thread != null && thread.isAlive) return true
+            // Fallback: within startup window (120s)
+            val elapsed = System.currentTimeMillis() - inst.startTime
+            return elapsed < 120_000
+        }
 
         fun start(context: Context) {
             val intent = Intent(context, GatewayService::class.java)
@@ -42,9 +65,14 @@ class GatewayService : Service() {
     private var gatewayProcess: Process? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var restartCount = 0
-    private val maxRestarts = 3
+    private val maxRestarts = 5
     private var startTime: Long = 0
+    private var processStartTime: Long = 0
     private var uptimeThread: Thread? = null
+    private var watchdogThread: Thread? = null
+    private var gatewayThread: Thread? = null
+    private val lock = Object()
+    @Volatile private var stopping = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -59,6 +87,7 @@ class GatewayService : Service() {
             updateNotificationRunning()
             return START_STICKY
         }
+        stopping = false
         acquireWakeLock()
         startGateway()
         return START_STICKY
@@ -69,19 +98,48 @@ class GatewayService : Service() {
         instance = null
         uptimeThread?.interrupt()
         uptimeThread = null
+        watchdogThread?.interrupt()
+        watchdogThread = null
         stopGateway()
         releaseWakeLock()
         super.onDestroy()
     }
 
-    private fun startGateway() {
-        if (gatewayProcess?.isAlive == true) return
-        isRunning = true
-        instance = this
-        startTime = System.currentTimeMillis()
+    /** Check if gateway port is already in use (another instance running). */
+    private fun isPortInUse(port: Int = 18789): Boolean {
+        return try {
+            Socket().use { socket ->
+                socket.connect(InetSocketAddress("127.0.0.1", port), 1000)
+                true
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
 
-        Thread {
+    private fun startGateway() {
+        synchronized(lock) {
+            if (stopping) return
+            if (gatewayProcess?.isAlive == true) return
+
+            isRunning = true
+            instance = this
+            startTime = System.currentTimeMillis()
+        }
+
+        gatewayThread = Thread {
             try {
+                // Check if an existing gateway is already listening on the port.
+                // Moved inside thread to avoid blocking the main thread (#60).
+                if (isPortInUse()) {
+                    emitLog("[INFO] Gateway already running on port 18789, adopting existing instance")
+                    updateNotificationRunning()
+                    startUptimeTicker()
+                    startWatchdog()
+                    return@Thread
+                }
+
+                emitLog("[INFO] Setting up environment...")
                 val filesDir = applicationContext.filesDir.absolutePath
                 val nativeLibDir = applicationContext.applicationInfo.nativeLibraryDir
                 val pm = ProcessManager(filesDir, nativeLibDir)
@@ -92,6 +150,7 @@ class GatewayService : Service() {
                 val bootstrapManager = BootstrapManager(applicationContext, filesDir, nativeLibDir)
                 try {
                     bootstrapManager.setupDirectories()
+                    emitLog("[INFO] Directories ready")
                 } catch (e: Exception) {
                     emitLog("[WARN] setupDirectories failed: ${e.message}")
                 }
@@ -122,13 +181,33 @@ class GatewayService : Service() {
                     }
                 } catch (_: Exception) {}
 
-                gatewayProcess = pm.startProotProcess("openclaw gateway --verbose")
+                // Abort if stop was requested during setup
+                if (stopping) return@Thread
+
+                // Final check right before launch — another instance may have
+                // started between the first check and now
+                if (isPortInUse()) {
+                    emitLog("Gateway already running on port 18789, skipping launch")
+                    updateNotificationRunning()
+                    startUptimeTicker()
+                    startWatchdog()
+                    return@Thread
+                }
+
+                emitLog("[INFO] Spawning proot process...")
+                synchronized(lock) {
+                    if (stopping) return@Thread
+                    processStartTime = System.currentTimeMillis()
+                    gatewayProcess = pm.startProotProcess("openclaw gateway --verbose")
+                }
                 updateNotificationRunning()
-                emitLog("Gateway started")
+                emitLog("[INFO] Gateway process spawned")
                 startUptimeTicker()
+                startWatchdog()
 
                 // Read stdout
-                val stdoutReader = BufferedReader(InputStreamReader(gatewayProcess!!.inputStream))
+                val proc = gatewayProcess!!
+                val stdoutReader = BufferedReader(InputStreamReader(proc.inputStream))
                 Thread {
                     try {
                         var line: String?
@@ -139,52 +218,104 @@ class GatewayService : Service() {
                     } catch (_: Exception) {}
                 }.start()
 
-                // Read stderr
-                val stderrReader = BufferedReader(InputStreamReader(gatewayProcess!!.errorStream))
+                // Read stderr — log all lines on first attempt for debugging visibility
+                val stderrReader = BufferedReader(InputStreamReader(proc.errorStream))
+                val currentRestartCount = restartCount
                 Thread {
                     try {
                         var line: String?
                         while (stderrReader.readLine().also { line = it } != null) {
                             val l = line ?: continue
-                            if (!l.contains("proot warning") && !l.contains("can't sanitize")) {
+                            if (currentRestartCount == 0 ||
+                                (!l.contains("proot warning") && !l.contains("can't sanitize"))) {
                                 emitLog("[ERR] $l")
                             }
                         }
                     } catch (_: Exception) {}
                 }.start()
 
-                val exitCode = gatewayProcess!!.waitFor()
-                emitLog("Gateway exited with code $exitCode")
+                val exitCode = proc.waitFor()
+                val uptimeMs = System.currentTimeMillis() - processStartTime
+                val uptimeSec = uptimeMs / 1000
+                emitLog("[INFO] Gateway exited with code $exitCode (uptime: ${uptimeSec}s)")
+
+                // If stop was requested, don't auto-restart
+                if (stopping) return@Thread
+
+                // If the gateway ran for >60s, it was a transient crash — reset counter
+                if (uptimeMs > 60_000) {
+                    restartCount = 0
+                }
 
                 if (isRunning && restartCount < maxRestarts) {
                     restartCount++
-                    val delayMs = 2000L * (1 shl (restartCount - 1)) // 2s, 4s, 8s
-                    emitLog("Auto-restarting in ${delayMs / 1000}s (attempt $restartCount/$maxRestarts)...")
+                    // Cap delay at 16s to avoid excessively long waits
+                    val delayMs = minOf(2000L * (1 shl (restartCount - 1)), 16000L)
+                    emitLog("[INFO] Auto-restarting in ${delayMs / 1000}s (attempt $restartCount/$maxRestarts)...")
                     updateNotification("Restarting in ${delayMs / 1000}s (attempt $restartCount)...")
                     Thread.sleep(delayMs)
-                    startGateway()
+                    if (!stopping) {
+                        startTime = System.currentTimeMillis()
+                        startGateway()
+                    }
                 } else if (restartCount >= maxRestarts) {
-                    emitLog("Max restarts reached. Gateway stopped.")
+                    emitLog("[WARN] Max restarts reached. Gateway stopped.")
                     updateNotification("Gateway stopped (crashed)")
                     isRunning = false
                 }
             } catch (e: Exception) {
-                emitLog("Gateway error: ${e.message}")
-                isRunning = false
-                updateNotification("Gateway error")
+                if (!stopping) {
+                    emitLog("[ERROR] Gateway error: ${e.message}")
+                    isRunning = false
+                    updateNotification("Gateway error")
+                }
             }
-        }.start()
+        }.also { it.start() }
     }
 
     private fun stopGateway() {
-        restartCount = maxRestarts // Prevent auto-restart
-        uptimeThread?.interrupt()
-        uptimeThread = null
-        gatewayProcess?.let {
-            it.destroyForcibly()
-            gatewayProcess = null
+        synchronized(lock) {
+            stopping = true
+            restartCount = maxRestarts // Prevent auto-restart
+            uptimeThread?.interrupt()
+            uptimeThread = null
+            watchdogThread?.interrupt()
+            watchdogThread = null
+            gatewayProcess?.let {
+                try {
+                    it.destroyForcibly()
+                } catch (_: Exception) {}
+                gatewayProcess = null
+            }
         }
         emitLog("Gateway stopped by user")
+    }
+
+    /** Watchdog: periodically checks if the proot process is alive.
+     *  If the process dies and the waitFor() thread hasn't noticed yet,
+     *  this ensures isRunning is updated promptly. */
+    private fun startWatchdog() {
+        watchdogThread?.interrupt()
+        watchdogThread = Thread {
+            try {
+                // Wait 45s before first check — give the process time to start
+                Thread.sleep(45_000)
+                while (!Thread.interrupted() && isRunning && !stopping) {
+                    val proc = gatewayProcess
+                    if (proc != null && !proc.isAlive) {
+                        // Process died — the waitFor() thread should handle restart,
+                        // but update the flag in case it's stuck
+                        emitLog("[WARN] Watchdog: gateway process not alive")
+                        break
+                    }
+                    // Also check if port is still responding after initial startup
+                    if (proc != null && !isPortInUse()) {
+                        emitLog("[WARN] Watchdog: port 18789 not responding")
+                    }
+                    Thread.sleep(15_000) // Check every 15s
+                }
+            } catch (_: InterruptedException) {}
+        }.apply { isDaemon = true; start() }
     }
 
     private fun startUptimeTicker() {
@@ -217,9 +348,17 @@ class GatewayService : Service() {
         updateNotification("Running on port 18789 \u2022 ${formatUptime()}")
     }
 
+    /** Emit a log message to the Flutter EventChannel.
+     *  MUST post to main thread — EventSink.success() is not thread-safe. */
     private fun emitLog(message: String) {
         try {
-            logSink?.success(message)
+            val ts = java.time.Instant.now().toString()
+            val formatted = "$ts $message"
+            mainHandler.post {
+                try {
+                    logSink?.success(formatted)
+                } catch (_: Exception) {}
+            }
         } catch (_: Exception) {}
     }
 
