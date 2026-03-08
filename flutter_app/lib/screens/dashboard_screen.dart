@@ -75,8 +75,8 @@ class DashboardScreen extends StatelessWidget {
                 final subtitle = provider.state.isRunning
                     ? (token != null
                         ? 'Token: ${token.substring(0, (token.length > 8 ? 8 : token.length))}...'
-                        : 'Open OpenClaw dashboard in browser')
-                    : 'Start gateway first';
+                        : l10n.t('dashboardWebDashboardSubtitle'))
+                    : l10n.t('dashboardStartGatewayFirst');
                 return StatusCard(
                   title: l10n.t('dashboardWebDashboardTitle'),
                   subtitle: subtitle,
