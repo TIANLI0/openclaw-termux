@@ -8,7 +8,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
 import '../services/native_bridge.dart';
 import '../services/screenshot_service.dart';
-import '../services/storage_permission_service.dart';
 import '../services/terminal_service.dart';
 import '../widgets/terminal_toolbar.dart';
 
@@ -61,22 +60,6 @@ class _ConfigureScreenState extends State<ConfigureScreen> {
     _pty?.kill();
     _pty = null;
     try {
-      final hasStoragePermission =
-          await StoragePermissionService.ensurePermission(
-        context,
-        dialogTitleKey: 'configureStorageDialogTitle',
-        dialogBodyKey: 'configureStorageDialogBody',
-      );
-      if (!hasStoragePermission) {
-        if (mounted) {
-          setState(() {
-            _loading = false;
-            _error = context.l10n.t('configureStoragePermissionRequired');
-          });
-        }
-        return;
-      }
-
       // Ensure dirs + resolv.conf exist before proot starts (#40).
       try {
         await NativeBridge.setupDirs();

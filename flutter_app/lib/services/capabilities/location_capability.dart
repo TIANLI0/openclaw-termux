@@ -66,10 +66,8 @@ class LocationCapability extends CapabilityHandler {
 
       try {
         final position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 10),
-          ),
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 10),
         );
         return _positionToFrame(position);
       } on TimeoutException {
@@ -80,8 +78,7 @@ class LocationCapability extends CapabilityHandler {
         }
         return NodeFrame.response('', error: {
           'code': 'LOCATION_TIMEOUT',
-          'message':
-              'Could not get location within 10 seconds and no cached position available',
+          'message': 'Could not get location within 10 seconds and no cached position available',
         });
       }
     } catch (e) {

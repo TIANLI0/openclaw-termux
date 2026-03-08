@@ -7,7 +7,6 @@ import '../models/setup_state.dart';
 import '../models/optional_package.dart';
 import '../providers/setup_provider.dart';
 import '../services/package_service.dart';
-import '../services/storage_permission_service.dart';
 import '../widgets/progress_step.dart';
 import 'onboarding_screen.dart';
 import 'package_install_screen.dart';
@@ -39,26 +38,6 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
   }
 
   Future<void> _beginSetup(SetupProvider provider) async {
-    final hasStoragePermission =
-        await StoragePermissionService.ensurePermission(
-      context,
-      dialogTitleKey: 'setupWizardStorageDialogTitle',
-      dialogBodyKey: 'setupWizardStorageDialogBody',
-    );
-
-    if (!mounted) {
-      return;
-    }
-
-    if (!hasStoragePermission) {
-      setState(() {
-        _started = false;
-        _permissionError =
-            context.l10n.t('setupWizardStoragePermissionRequired');
-      });
-      return;
-    }
-
     setState(() {
       _started = true;
       _permissionError = null;

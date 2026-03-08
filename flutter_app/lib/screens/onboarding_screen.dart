@@ -9,7 +9,6 @@ import '../constants.dart';
 import '../l10n/app_localizations.dart';
 import '../services/native_bridge.dart';
 import '../services/screenshot_service.dart';
-import '../services/storage_permission_service.dart';
 import '../services/terminal_service.dart';
 import '../services/preferences_service.dart';
 import '../widgets/terminal_toolbar.dart';
@@ -83,22 +82,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _pty?.kill();
     _pty = null;
     try {
-      final hasStoragePermission =
-          await StoragePermissionService.ensurePermission(
-        context,
-        dialogTitleKey: 'onboardingStorageDialogTitle',
-        dialogBodyKey: 'onboardingStorageDialogBody',
-      );
-      if (!hasStoragePermission) {
-        if (mounted) {
-          setState(() {
-            _loading = false;
-            _error = context.l10n.t('onboardingStoragePermissionRequired');
-          });
-        }
-        return;
-      }
-
       // Ensure dirs + resolv.conf exist before proot starts (#40).
       try {
         await NativeBridge.setupDirs();
