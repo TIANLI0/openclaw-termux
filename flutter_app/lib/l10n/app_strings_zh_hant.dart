@@ -127,7 +127,8 @@ const Map<String, String> appStringsZhHant = {
   'setupWizardBegin': '開始安裝',
   'setupWizardRequirements': '需要約 500MB 存儲空間和網絡連接',
   'setupWizardStorageDialogTitle': '安裝前授予檔案存取權限',
-  'setupWizardStorageDialogBody': 'OpenClaw 在開始安裝前需要檔案管理權限，這樣 Ubuntu 環境才能在 proot 中正確掛載共享存儲。接下來會打開 Android 授權頁面。',
+  'setupWizardStorageDialogBody':
+      'OpenClaw 在開始安裝前需要檔案管理權限，這樣 Ubuntu 環境才能在 proot 中正確掛載共享存儲。接下來會打開 Android 授權頁面。',
   'setupWizardStoragePermissionRequired': '開始安裝前，必須先授予檔案管理權限。',
   'setupWizardOptionalPackages': '可選組件',
   'setupWizardStepDownloadRootfs': '下載 Ubuntu rootfs',
@@ -147,7 +148,8 @@ const Map<String, String> appStringsZhHant = {
   'setupWizardStatusUpdatingPackageLists': '正在更新軟體包列表...',
   'setupWizardStatusInstallingBasePackages': '正在安裝基礎軟體包...',
   'setupWizardStatusDownloadingNode': '正在下載 Node.js {version}...',
-  'setupWizardStatusDownloadingNodeProgress': '正在下載 Node.js：{current} MB / {total} MB',
+  'setupWizardStatusDownloadingNodeProgress':
+      '正在下載 Node.js：{current} MB / {total} MB',
   'setupWizardStatusExtractingNode': '正在解壓 Node.js...',
   'setupWizardStatusVerifyingNode': '正在驗證 Node.js...',
   'setupWizardStatusNodeInstalled': 'Node.js 已安裝',
@@ -194,6 +196,8 @@ const Map<String, String> appStringsZhHant = {
   'nodeCapabilityVibrationSubtitle': '觸發觸覺回饋和震動模式',
   'nodeCapabilitySensorsTitle': '感測器',
   'nodeCapabilitySensorsSubtitle': '讀取加速度計、陀螺儀、磁力計、氣壓計',
+  'nodeCapabilitySerialTitle': '序列埠',
+  'nodeCapabilitySerialSubtitle': '藍牙和 USB 序列埠通訊',
   'nodeDeviceInfo': '設備資訊',
   'nodeDeviceId': '設備 ID',
   'nodeLogs': '節點日誌',
@@ -219,13 +223,16 @@ const Map<String, String> appStringsZhHant = {
   'settingsStorageGranted': '已授權，可在 proot 中存取 /sdcard',
   'settingsStorageMissing': '允許存取共享存儲',
   'settingsStorageDialogTitle': '授予檔案存取權限',
-  'settingsStorageDialogBody': 'OpenClaw 需要檔案管理權限，才能在共享存儲中讀取和寫入快照檔案。接下來會跳轉到系統設定頁面。',
+  'settingsStorageDialogBody':
+      'OpenClaw 需要檔案管理權限，才能在共享存儲中讀取和寫入快照檔案。接下來會跳轉到系統設定頁面。',
   'settingsStorageDialogAction': '繼續',
   'onboardingStorageDialogTitle': '為引導配置授予檔案存取權限',
-  'onboardingStorageDialogBody': 'OpenClaw 引導配置需要檔案管理權限，Ubuntu 才能在 proot 中掛載共享存儲，並完成 API Key 與綁定配置。接下來會打開 Android 授權頁面。',
+  'onboardingStorageDialogBody':
+      'OpenClaw 引導配置需要檔案管理權限，Ubuntu 才能在 proot 中掛載共享存儲，並完成 API Key 與綁定配置。接下來會打開 Android 授權頁面。',
   'onboardingStoragePermissionRequired': '繼續引導配置前，必須先授予檔案管理權限。',
   'configureStorageDialogTitle': '為配置頁面授予檔案存取權限',
-  'configureStorageDialogBody': 'OpenClaw 配置頁面需要檔案管理權限，Ubuntu 才能在 proot 中掛載共享存儲並管理網關設定。接下來會打開 Android 授權頁面。',
+  'configureStorageDialogBody':
+      'OpenClaw 配置頁面需要檔案管理權限，Ubuntu 才能在 proot 中掛載共享存儲並管理網關設定。接下來會打開 Android 授權頁面。',
   'configureStoragePermissionRequired': '繼續配置前，必須先授予檔案管理權限。',
   'settingsNode': '節點',
   'settingsEnableNode': '啟用節點',

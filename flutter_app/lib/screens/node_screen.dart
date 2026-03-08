@@ -227,8 +227,8 @@ class _NodeScreenState extends State<NodeScreen> {
                     ),
                     _capabilityTile(
                       theme,
-                      'Serial',
-                      'Bluetooth and USB serial communication',
+                      l10n.t('nodeCapabilitySerialTitle'),
+                      l10n.t('nodeCapabilitySerialSubtitle'),
                       Icons.usb,
                     ),
                     const SizedBox(height: 16),

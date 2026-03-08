@@ -42,7 +42,8 @@ const Map<String, String> appStringsJa = {
   'providerDetailApiKey': 'API Key',
   'providerDetailApiKeyEmpty': 'API key cannot be empty',
   'providerDetailEndpoint': 'API Base URL',
-  'providerDetailEndpointHelper': 'Override the default endpoint if your account uses a custom or regional API base URL.',
+  'providerDetailEndpointHelper':
+      'Override the default endpoint if your account uses a custom or regional API base URL.',
   'providerDetailEndpointInvalid': 'Enter a valid absolute API base URL',
   'providerDetailModel': 'Model',
   'providerDetailModelEmpty': 'Model name cannot be empty',
@@ -53,21 +54,26 @@ const Map<String, String> appStringsJa = {
   'providerDetailSaved': '{provider} configured and activated',
   'providerDetailSaveFailed': 'Failed to save: {error}',
   'providerDetailRemoveTitle': 'Remove {provider}?',
-  'providerDetailRemoveBody': 'This will delete the API key, endpoint, and saved model for this provider.',
+  'providerDetailRemoveBody':
+      'This will delete the API key, endpoint, and saved model for this provider.',
   'providerDetailRemoveAction': 'Remove',
   'providerDetailRemoveConfiguration': 'Remove Configuration',
   'providerDetailRemoved': '{provider} removed',
   'providerDetailRemoveFailed': 'Failed to remove: {error}',
   'providerNameAnthropic': 'Anthropic',
-  'providerDescriptionAnthropic': 'Claude models for advanced reasoning and coding',
+  'providerDescriptionAnthropic':
+      'Claude models for advanced reasoning and coding',
   'providerNameOpenai': 'OpenAI',
   'providerDescriptionOpenai': 'GPT and o-series models',
   'providerNameQwen': 'Qwen',
-  'providerDescriptionQwen': 'Alibaba Cloud Qwen models via DashScope OpenAI-compatible API',
+  'providerDescriptionQwen':
+      'Alibaba Cloud Qwen models via DashScope OpenAI-compatible API',
   'providerNameMinimax': 'MiniMax',
-  'providerDescriptionMinimax': 'MiniMax chat models with editable API endpoint support',
+  'providerDescriptionMinimax':
+      'MiniMax chat models with editable API endpoint support',
   'providerNameDoubao': 'Doubao',
-  'providerDescriptionDoubao': 'Volcengine Ark / Doubao models with official Ark endpoint presets',
+  'providerDescriptionDoubao':
+      'Volcengine Ark / Doubao models with official Ark endpoint presets',
   'providerNameGoogle': 'Google Gemini',
   'providerDescriptionGoogle': 'Gemini family of multimodal models',
   'providerNameOpenrouter': 'OpenRouter',
@@ -115,20 +121,26 @@ const Map<String, String> appStringsJa = {
   'packagesInstall': 'インストール',
   'packagesUninstall': 'アンインストール',
   'packagesUninstallTitle': 'Uninstall {name}?',
-  'packagesUninstallDescription': 'This will remove {name} from the environment.',
+  'packagesUninstallDescription':
+      'This will remove {name} from the environment.',
   'packageGoDescription': 'Go programming language compiler and tools',
   'packageBrewDescription': 'The missing package manager for Linux',
   'packageSshDescription': 'SSH client and server for secure remote access',
   'setupWizardTitle': 'OpenClaw セットアップ',
-  'setupWizardIntroIdle': 'This will download Ubuntu, Node.js, and OpenClaw into a self-contained environment.',
-  'setupWizardIntroRunning': 'Setting up the environment. This may take several minutes.',
+  'setupWizardIntroIdle':
+      'This will download Ubuntu, Node.js, and OpenClaw into a self-contained environment.',
+  'setupWizardIntroRunning':
+      'Setting up the environment. This may take several minutes.',
   'setupWizardConfigureApiKeys': 'Configure API Keys',
   'setupWizardRetry': '再試行',
   'setupWizardBegin': 'セットアップ開始',
-  'setupWizardRequirements': 'Requires ~500MB of storage and an internet connection',
+  'setupWizardRequirements':
+      'Requires ~500MB of storage and an internet connection',
   'setupWizardStorageDialogTitle': 'Grant file access before setup',
-  'setupWizardStorageDialogBody': 'OpenClaw setup needs file management access before installation starts, so the Ubuntu environment can mount shared storage correctly inside proot. The Android permission page will open next.',
-  'setupWizardStoragePermissionRequired': 'File management access is required before setup can start.',
+  'setupWizardStorageDialogBody':
+      'OpenClaw setup needs file management access before installation starts, so the Ubuntu environment can mount shared storage correctly inside proot. The Android permission page will open next.',
+  'setupWizardStoragePermissionRequired':
+      'File management access is required before setup can start.',
   'setupWizardOptionalPackages': 'OPTIONAL PACKAGES',
   'setupWizardStepDownloadRootfs': 'Download Ubuntu rootfs',
   'setupWizardStepExtractRootfs': 'Extract rootfs',
@@ -140,18 +152,22 @@ const Map<String, String> appStringsJa = {
   'setupWizardStatusSetupRequired': 'Setup required',
   'setupWizardStatusSettingUpDirs': 'Setting up directories...',
   'setupWizardStatusDownloadingUbuntuRootfs': 'Downloading Ubuntu rootfs...',
-  'setupWizardStatusDownloadingProgress': 'Downloading: {current} MB / {total} MB',
-  'setupWizardStatusExtractingRootfs': 'Extracting rootfs (this takes a while)...',
+  'setupWizardStatusDownloadingProgress':
+      'Downloading: {current} MB / {total} MB',
+  'setupWizardStatusExtractingRootfs':
+      'Extracting rootfs (this takes a while)...',
   'setupWizardStatusRootfsExtracted': 'Rootfs extracted',
   'setupWizardStatusFixingPermissions': 'Fixing rootfs permissions...',
   'setupWizardStatusUpdatingPackageLists': 'Updating package lists...',
   'setupWizardStatusInstallingBasePackages': 'Installing base packages...',
   'setupWizardStatusDownloadingNode': 'Downloading Node.js {version}...',
-  'setupWizardStatusDownloadingNodeProgress': 'Downloading Node.js: {current} MB / {total} MB',
+  'setupWizardStatusDownloadingNodeProgress':
+      'Downloading Node.js: {current} MB / {total} MB',
   'setupWizardStatusExtractingNode': 'Extracting Node.js...',
   'setupWizardStatusVerifyingNode': 'Verifying Node.js...',
   'setupWizardStatusNodeInstalled': 'Node.js installed',
-  'setupWizardStatusInstallingOpenClaw': 'Installing OpenClaw (this may take a few minutes)...',
+  'setupWizardStatusInstallingOpenClaw':
+      'Installing OpenClaw (this may take a few minutes)...',
   'setupWizardStatusCreatingBinWrappers': 'Creating bin wrappers...',
   'setupWizardStatusVerifyingOpenClaw': 'Verifying OpenClaw...',
   'setupWizardStatusOpenClawInstalled': 'OpenClaw installed',
@@ -187,13 +203,18 @@ const Map<String, String> appStringsJa = {
   'nodeCapabilityLocationTitle': 'Location',
   'nodeCapabilityLocationSubtitle': 'Get device GPS coordinates',
   'nodeCapabilityScreenTitle': 'Screen Recording',
-  'nodeCapabilityScreenSubtitle': 'Record device screen (requires consent each time)',
+  'nodeCapabilityScreenSubtitle':
+      'Record device screen (requires consent each time)',
   'nodeCapabilityFlashlightTitle': 'Flashlight',
   'nodeCapabilityFlashlightSubtitle': 'Toggle device torch on/off',
   'nodeCapabilityVibrationTitle': 'Vibration',
-  'nodeCapabilityVibrationSubtitle': 'Trigger haptic feedback and vibration patterns',
+  'nodeCapabilityVibrationSubtitle':
+      'Trigger haptic feedback and vibration patterns',
   'nodeCapabilitySensorsTitle': 'Sensors',
-  'nodeCapabilitySensorsSubtitle': 'Read accelerometer, gyroscope, magnetometer, barometer',
+  'nodeCapabilitySensorsSubtitle':
+      'Read accelerometer, gyroscope, magnetometer, barometer',
+  'nodeCapabilitySerialTitle': 'シリアル',
+  'nodeCapabilitySerialSubtitle': 'Bluetooth と USB シリアル通信',
   'nodeDeviceInfo': 'Device info',
   'nodeDeviceId': 'Device ID',
   'nodeLogs': 'Node logs',
@@ -219,14 +240,19 @@ const Map<String, String> appStringsJa = {
   'settingsStorageGranted': 'Granted — /sdcard accessible in proot',
   'settingsStorageMissing': 'Allow access to shared storage',
   'settingsStorageDialogTitle': 'Grant file access',
-  'settingsStorageDialogBody': 'OpenClaw needs file management access to read and write snapshot files in shared storage. You will be taken to the system settings page next.',
+  'settingsStorageDialogBody':
+      'OpenClaw needs file management access to read and write snapshot files in shared storage. You will be taken to the system settings page next.',
   'settingsStorageDialogAction': 'Continue',
   'onboardingStorageDialogTitle': 'Grant file access for onboarding',
-  'onboardingStorageDialogBody': 'OpenClaw onboarding needs file management access so Ubuntu can mount shared storage inside proot while you configure API keys and binding. The Android permission page will open next.',
-  'onboardingStoragePermissionRequired': 'File management access is required before onboarding can continue.',
+  'onboardingStorageDialogBody':
+      'OpenClaw onboarding needs file management access so Ubuntu can mount shared storage inside proot while you configure API keys and binding. The Android permission page will open next.',
+  'onboardingStoragePermissionRequired':
+      'File management access is required before onboarding can continue.',
   'configureStorageDialogTitle': 'Grant file access for configuration',
-  'configureStorageDialogBody': 'OpenClaw configuration needs file management access so Ubuntu can mount shared storage inside proot while you manage gateway settings. The Android permission page will open next.',
-  'configureStoragePermissionRequired': 'File management access is required before configuration can continue.',
+  'configureStorageDialogBody':
+      'OpenClaw configuration needs file management access so Ubuntu can mount shared storage inside proot while you manage gateway settings. The Android permission page will open next.',
+  'configureStoragePermissionRequired':
+      'File management access is required before configuration can continue.',
   'settingsNode': 'ノード',
   'settingsEnableNode': 'Enable Node',
   'settingsEnableNodeSubtitle': 'Provide device capabilities to the gateway',
@@ -259,7 +285,8 @@ const Map<String, String> appStringsJa = {
   'settingsSnapshotSaved': 'Snapshot saved to {path}',
   'settingsExportFailed': 'Export failed: {error}',
   'settingsSnapshotMissing': 'No snapshot found at {path}',
-  'settingsSnapshotRestored': 'Snapshot restored successfully. Restart the gateway to apply.',
+  'settingsSnapshotRestored':
+      'Snapshot restored successfully. Restart the gateway to apply.',
   'settingsImportFailed': 'Import failed: {error}',
   'statusInstalled': 'インストール済み',
   'statusNotInstalled': '未インストール',
