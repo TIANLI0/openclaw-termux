@@ -221,7 +221,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: _selectedModel,
+            initialValue: _selectedModel,
             isExpanded: true,
             decoration: const InputDecoration(),
             items: [

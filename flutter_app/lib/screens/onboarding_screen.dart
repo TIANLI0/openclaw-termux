@@ -6,8 +6,10 @@ import 'package:xterm/xterm.dart';
 import 'package:flutter_pty/flutter_pty.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../constants.dart';
+import '../l10n/app_localizations.dart';
 import '../services/native_bridge.dart';
 import '../services/screenshot_service.dart';
+import '../services/storage_permission_service.dart';
 import '../services/terminal_service.dart';
 import '../services/preferences_service.dart';
 import '../widgets/terminal_toolbar.dart';
@@ -38,8 +40,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _altNotifier = ValueNotifier<bool>(false);
   final _screenshotKey = GlobalKey();
   static final _anyUrlRegex = RegExp(r'https?://[^\s<>\[\]"' "'" r'\)]+');
-  static final _tokenUrlRegex = RegExp(r'https?://(?:localhost|127\.0\.0\.1):18789/#token=[0-9a-f]+');
+  static final _tokenUrlRegex =
+      RegExp(r'https?://(?:localhost|127\.0\.0\.1):18789/#token=[0-9a-f]+');
   static final _ansiEscape = AppConstants.ansiEscape;
+
   /// Box-drawing and other TUI characters that break URLs when copied
   static final _boxDrawing = RegExp(r'[│┤├┬┴┼╮╯╰╭─╌╴╶┌┐└┘◇◆]+');
   static final _completionPattern = RegExp(
@@ -79,9 +83,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _pty?.kill();
     _pty = null;
     try {
+      final hasStoragePermission =
+          await StoragePermissionService.ensurePermission(
+        context,
+        dialogTitleKey: 'onboardingStorageDialogTitle',
+        dialogBodyKey: 'onboardingStorageDialogBody',
+      );
+      if (!hasStoragePermission) {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _error = context.l10n.t('onboardingStoragePermissionRequired');
+          });
+        }
+        return;
+      }
+
       // Ensure dirs + resolv.conf exist before proot starts (#40).
-      try { await NativeBridge.setupDirs(); } catch (_) {}
-      try { await NativeBridge.writeResolv(); } catch (_) {}
+      try {
+        await NativeBridge.setupDirs();
+      } catch (_) {}
+      try {
+        await NativeBridge.writeResolv();
+      } catch (_) {}
       try {
         final filesDir = await NativeBridge.getFilesDir();
         const resolvContent = 'nameserver 8.8.8.8\nnameserver 8.8.4.4\n';
@@ -112,13 +136,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       onboardingArgs.removeLast(); // remove '-l'
       onboardingArgs.removeLast(); // remove '/bin/bash'
       onboardingArgs.addAll([
-        '/bin/bash', '-lc',
+        '/bin/bash',
+        '-lc',
         'echo "=== OpenClaw Onboarding ===" && '
-        'echo "Configure your API keys and binding settings." && '
-        'echo "TIP: Select Loopback (127.0.0.1) when asked for binding!" && '
-        'echo "" && '
-        'openclaw onboard; '
-        'echo "" && echo "Onboarding complete! You can close this screen."',
+            'echo "Configure your API keys and binding settings." && '
+            'echo "TIP: Select Loopback (127.0.0.1) when asked for binding!" && '
+            'echo "" && '
+            'openclaw onboard; '
+            'echo "" && echo "Onboarding complete! You can close this screen."',
       ]);
 
       _pty = Pty.start(
@@ -191,7 +216,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     } catch (e) {
       setState(() {
         _loading = false;
-        _error = 'Failed to start onboarding: $e';
+        _error = context.l10n.t('onboardingStartFailed', {'error': '$e'});
       });
     }
   }
@@ -234,7 +259,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   /// chars and rejoining lines, but splitting on `http` boundaries
   /// so concatenated URLs don't merge into one.
   String? _extractUrl(String text) {
-    final clean = text.replaceAll(_boxDrawing, '').replaceAll(RegExp(r'\s+'), '');
+    final clean =
+        text.replaceAll(_boxDrawing, '').replaceAll(RegExp(r'\s+'), '');
     // Split before each http(s):// so concatenated URLs become separate
     final parts = clean.split(RegExp(r'(?=https?://)'));
     // Return the longest URL match (token URLs are longest)
@@ -262,10 +288,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (url != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Copied to clipboard'),
+          content: Text(context.l10n.t('commonCopiedToClipboard')),
           duration: const Duration(seconds: 3),
           action: SnackBarAction(
-            label: 'Open',
+            label: context.l10n.t('commonOpen'),
             onPressed: () {
               final uri = Uri.tryParse(url);
               if (uri != null) {
@@ -277,9 +303,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Copied to clipboard'),
-          duration: Duration(seconds: 1),
+        SnackBar(
+          content: Text(context.l10n.t('commonCopiedToClipboard')),
+          duration: const Duration(seconds: 1),
         ),
       );
     }
@@ -298,9 +324,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('No URL found in selection'),
-        duration: Duration(seconds: 1),
+      SnackBar(
+        content: Text(context.l10n.t('commonNoUrlFound')),
+        duration: const Duration(seconds: 1),
       ),
     );
   }
@@ -313,13 +339,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _takeScreenshot() async {
-    final path = await ScreenshotService.capture(_screenshotKey, prefix: 'onboarding');
+    final path =
+        await ScreenshotService.capture(_screenshotKey, prefix: 'onboarding');
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(path != null
-            ? 'Screenshot saved: ${path.split('/').last}'
-            : 'Failed to capture screenshot'),
+            ? context.l10n.t('commonScreenshotSaved', {
+                'fileName': path.split('/').last,
+              })
+            : context.l10n.t('commonSaveFailed')),
       ),
     );
   }
@@ -364,29 +393,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final shouldOpen = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Open Link'),
+        title: Text(context.l10n.t('commonOpenLink')),
         content: Text(url),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.t('commonCancel')),
           ),
           TextButton(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: url));
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Link copied'),
-                  duration: Duration(seconds: 1),
+                SnackBar(
+                  content: Text(context.l10n.t('commonLinkCopied')),
+                  duration: const Duration(seconds: 1),
                 ),
               );
               Navigator.pop(ctx, false);
             },
-            child: const Text('Copy'),
+            child: Text(context.l10n.t('commonCopy')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Open'),
+            child: Text(context.l10n.t('commonOpen')),
           ),
         ],
       ),
@@ -413,9 +442,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('OpenClaw Onboarding'),
+        title: Text(l10n.t('onboardingTitle')),
         leading: widget.isFirstRun
             ? null // no back button during first-run
             : IconButton(
@@ -426,22 +457,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.camera_alt_outlined),
-            tooltip: 'Screenshot',
+            tooltip: l10n.t('commonScreenshot'),
             onPressed: _takeScreenshot,
           ),
           IconButton(
             icon: const Icon(Icons.copy),
-            tooltip: 'Copy',
+            tooltip: l10n.t('commonCopy'),
             onPressed: _copySelection,
           ),
           IconButton(
             icon: const Icon(Icons.open_in_browser),
-            tooltip: 'Open URL',
+            tooltip: l10n.t('commonOpen'),
             onPressed: _openSelection,
           ),
           IconButton(
             icon: const Icon(Icons.paste),
-            tooltip: 'Paste',
+            tooltip: l10n.t('commonPaste'),
             onPressed: _paste,
           ),
         ],
@@ -449,14 +480,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: Column(
         children: [
           if (_loading)
-            const Expanded(
+            Expanded(
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Starting onboarding...'),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text(l10n.t('onboardingStarting')),
                   ],
                 ),
               ),
@@ -478,7 +509,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       Text(
                         _error!,
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.error),
                       ),
                       const SizedBox(height: 16),
                       FilledButton.icon(
@@ -491,7 +523,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           _startOnboarding();
                         },
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Retry'),
+                        label: Text(l10n.t('commonRetry')),
                       ),
                     ],
                   ),
@@ -530,12 +562,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   onPressed: widget.isFirstRun
                       ? _goToDashboard
                       : () => Navigator.of(context).pop(),
-                  icon: Icon(widget.isFirstRun
-                      ? Icons.arrow_forward
-                      : Icons.check),
+                  icon: Icon(
+                      widget.isFirstRun ? Icons.arrow_forward : Icons.check),
                   label: Text(widget.isFirstRun
-                      ? 'Go to Dashboard'
-                      : 'Done'),
+                      ? l10n.t('onboardingGoToDashboard')
+                      : l10n.t('commonDone')),
                 ),
               ),
             ),
